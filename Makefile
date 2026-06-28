@@ -1,23 +1,26 @@
-.PHONY: install data train predict streamlit api test clean
+.PHONY: install data train plot-loss predict streamlit api test clean
 
 install:
 	pip install -r requirements.txt
 	pip install -e .
 
 data:
-	python scripts/make_synthetic_dataset.py --output data/synthetic --train-size 120 --val-size 30
+	python3 -m defect_detection.data.make_synthetic_dataset --output data/synthetic --train-size 120 --val-size 30
 
 train:
-	python -m defect_detection.engine --config configs/faster_rcnn.yaml
+	python3 -m defect_detection.training.engine --config configs/faster_rcnn.yaml
+
+plot-loss:
+	python3 -m defect_detection.training.plot_metrics --metrics runs/defect_faster_rcnn/metrics.jsonl --output assets/loss_curve.png
 
 predict:
-	python -m defect_detection.predict --weights runs/defect_faster_rcnn/best.pt --image data/synthetic/val/images/val_0000.png --output outputs/prediction.png
+	python3 -m defect_detection.inference.predict --weights runs/defect_faster_rcnn/best.pt --image data/synthetic/val/images/val_0000.png --output outputs/prediction.png
 
 streamlit:
-	streamlit run app/streamlit_app.py -- --weights runs/defect_faster_rcnn/best.pt
+	streamlit run src/defect_detection/serving/streamlit_app.py -- --weights runs/defect_faster_rcnn/best.pt
 
 api:
-	uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
+	uvicorn defect_detection.serving.api:app --reload --host 0.0.0.0 --port 8000
 
 test:
 	pytest -q

@@ -6,6 +6,41 @@ from tqdm import tqdm
 from defect_detection.utils import move_targets_to_device
 
 
+def evaluate_loss(
+    model: torch.nn.Module,
+    data_loader,
+    device: torch.device,
+    amp: bool = True,
+) -> float:
+    """Compute validation loss for torchvision detection models.
+
+    Torchvision detection models return losses only in training mode when targets
+    are supplied. Gradients stay disabled here, so model weights are not updated.
+    """
+    was_training = model.training
+    model.train()
+
+    running_loss = 0.0
+    n_batches = 0
+    use_amp = amp and device.type == "cuda"
+
+    try:
+        with torch.no_grad():
+            for images, targets in tqdm(data_loader, desc="val_loss", leave=False):
+                images = [img.to(device) for img in images]
+                targets = move_targets_to_device(targets, device)
+                with torch.amp.autocast(device_type="cuda", enabled=use_amp):
+                    loss_dict = model(images, targets)
+                    losses = sum(loss for loss in loss_dict.values())
+
+                running_loss += float(losses.detach().cpu().item())
+                n_batches += 1
+    finally:
+        model.train(was_training)
+
+    return running_loss / max(n_batches, 1)
+
+
 def box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> torch.Tensor:
     if boxes1.numel() == 0 or boxes2.numel() == 0:
         return torch.zeros((boxes1.shape[0], boxes2.shape[0]), device=boxes1.device)

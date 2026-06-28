@@ -47,23 +47,17 @@ The first version uses a synthetic dataset generated directly inside the project
 
 ```text
 DefectVision/
-├── app/
-│   ├── api.py
-│   └── streamlit_app.py
 ├── configs/
 │   └── faster_rcnn.yaml
-├── scripts/
-│   ├── export_model.py
-│   └── make_synthetic_dataset.py
 ├── src/
 │   └── defect_detection/
-│       ├── dataset.py
-│       ├── engine.py
-│       ├── evaluate.py
-│       ├── model.py
-│       ├── predict.py
-│       ├── transforms.py
-│       └── utils.py
+│       ├── data/
+│       ├── export/
+│       ├── inference/
+│       ├── models/
+│       ├── serving/
+│       ├── training/
+│       └── utils/
 ├── tests/
 │   └── test_dataset.py
 ├── Dockerfile
@@ -107,7 +101,7 @@ python -m pip install -e .
 Generate a synthetic defect detection dataset:
 
 ```bash
-python scripts/make_synthetic_dataset.py \
+python -m defect_detection.data.make_synthetic_dataset \
   --output data/synthetic \
   --train-size 120 \
   --val-size 30
@@ -130,7 +124,7 @@ data/synthetic/
 Start training:
 
 ```bash
-python -m defect_detection.engine --config configs/faster_rcnn.yaml
+python -m defect_detection.training.engine --config configs/faster_rcnn.yaml
 ```
 
 Training artifacts will be saved to:
@@ -139,7 +133,18 @@ Training artifacts will be saved to:
 runs/defect_faster_rcnn/
 ├── best.pt
 ├── last.pt
-└── metrics.jsonl
+├── metrics.jsonl
+└── loss_curve.png
+```
+
+Each epoch writes `train_loss`, `val_loss`, detection metrics, learning rate, and epoch time to `metrics.jsonl`.
+The project currently uses the validation split as the holdout/test-like split, so test-loss tracking is stored as `val_loss`.
+The loss curve is updated automatically during training. You can also rebuild it manually:
+
+```bash
+python -m defect_detection.training.plot_metrics \
+  --metrics runs/defect_faster_rcnn/metrics.jsonl \
+  --output assets/loss_curve.png
 ```
 
 ## Inference
@@ -147,7 +152,7 @@ runs/defect_faster_rcnn/
 Run prediction on a single image:
 
 ```bash
-python -m defect_detection.predict \
+python -m defect_detection.inference.predict \
   --weights runs/defect_faster_rcnn/best.pt \
   --image data/synthetic/val/images/val_0000.png \
   --output outputs/prediction.png \
@@ -161,7 +166,7 @@ The output image will contain detected defects with bounding boxes, class names,
 Run the Streamlit web application:
 
 ```bash
-streamlit run app/streamlit_app.py -- \
+streamlit run src/defect_detection/serving/streamlit_app.py -- \
   --weights runs/defect_faster_rcnn/best.pt
 ```
 
@@ -172,13 +177,34 @@ The demo allows the user to upload an image and receive visual defect detection 
 Start the API server:
 
 ```bash
-uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
+uvicorn defect_detection.serving.api:app --reload --host 0.0.0.0 --port 8000
+```
+
+Open the generated API documentation:
+
+```text
+Swagger UI:  http://localhost:8000/docs
+ReDoc:       http://localhost:8000/redoc
+OpenAPI:     http://localhost:8000/openapi.json
+```
+
+The root endpoint also returns the documentation links:
+
+```bash
+curl http://localhost:8000/
 ```
 
 Send an image to the API:
 
 ```bash
 curl -X POST "http://localhost:8000/predict" \
+  -F "file=@data/synthetic/val/images/val_0000.png"
+```
+
+You can override the default confidence threshold per request:
+
+```bash
+curl -X POST "http://localhost:8000/predict?score_threshold=0.5" \
   -F "file=@data/synthetic/val/images/val_0000.png"
 ```
 
@@ -224,18 +250,44 @@ For three defect classes, the value is `4`.
 
 ## Results
 
-This section should be updated after training and evaluation.
+The model was trained for 5 epochs on the generated synthetic dataset and evaluated on the synthetic validation split.
+The validation set contains 30 images. Metrics are reported at IoU `0.5`; evaluation uses the configured score threshold `0.35`.
 
-| Model                     | Dataset           | mAP@0.5 | Precision | Recall |
-| ------------------------- | ----------------- | ------: | --------: | -----: |
-| Faster R-CNN ResNet50 FPN | Synthetic defects |    TODO |      TODO |   TODO |
+| Model                     | Checkpoint | Epoch | Dataset               | mAP@0.5 | Precision | Recall |
+| ------------------------- | ---------- | ----: | --------------------- | ------: | --------: | -----: |
+| Faster R-CNN ResNet50 FPN | `last.pt`  |     5 | Synthetic defects val |  0.9394 |    0.9550 | 0.9815 |
+| Faster R-CNN ResNet50 FPN | `best.pt`  |     2 | Synthetic defects val |  0.9394 |    0.9292 | 0.9722 |
 
-Example files to add after inference:
+Final validation counts for `last.pt`:
+
+| TP | FP | FN |
+| -: | -: | -: |
+| 106 | 5 | 2 |
+
+Loss tracking:
+
+* new training runs save both `train_loss` and `val_loss` to `runs/defect_faster_rcnn/metrics.jsonl`;
+* `runs/defect_faster_rcnn/loss_curve.png` is generated automatically after every epoch;
+* the historical run shown below was trained before `val_loss` logging was added, so its stored `metrics.jsonl` contains only `train_loss`.
+
+![Training loss curve](assets/loss_curve.png)
+
+Prediction examples generated with `best.pt` and score threshold `0.4`:
+
+![Prediction example 1](assets/prediction_1.png)
+
+![Prediction example 2](assets/prediction_2.png)
+
+Result artifacts:
 
 ```text
 assets/prediction_1.png
 assets/prediction_2.png
-assets/demo.gif
+assets/loss_curve.png
+runs/defect_faster_rcnn/loss_curve.png
+runs/defect_faster_rcnn/best.pt
+runs/defect_faster_rcnn/last.pt
+runs/defect_faster_rcnn/metrics.jsonl
 ```
 
 ## Using a Real Dataset
@@ -288,7 +340,7 @@ data:
 The project includes a model export script:
 
 ```bash
-python scripts/export_model.py \
+python -m defect_detection.export.export_model \
   --weights runs/defect_faster_rcnn/best.pt \
   --output exports/model.pt
 ```
@@ -306,7 +358,7 @@ docker build -t defect-vision .
 Run the container:
 
 ```bash
-docker run --rm -p 8501:8501 defect-vision
+docker run --rm -p 8000:8000 defect-vision
 ```
 
 ## Makefile Commands
@@ -317,6 +369,7 @@ The project includes a `Makefile` with common commands:
 make install
 make data
 make train
+make plot-loss
 make predict
 make streamlit
 make api
@@ -372,7 +425,7 @@ Then activate the environment again and restart training:
 
 ```bash
 source .venv/bin/activate
-python -m defect_detection.engine --config configs/faster_rcnn.yaml
+python -m defect_detection.training.engine --config configs/faster_rcnn.yaml
 ```
 
 If the file is located in another Python version folder, find it with:
@@ -384,4 +437,3 @@ find /Applications -name "Install Certificates.command"
 ## License
 
 This project is intended for educational and portfolio purposes.
-

@@ -9,7 +9,7 @@ import torch
 from PIL import Image, ImageDraw, ImageFont
 from torchvision.transforms import functional as F
 
-from defect_detection.model import load_checkpoint
+from defect_detection.models import load_checkpoint
 from defect_detection.utils import ensure_dir, get_device
 
 

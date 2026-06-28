@@ -9,10 +9,10 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from defect_detection.dataset import COCODefectDataset
-from defect_detection.evaluate import evaluate_detector
-from defect_detection.model import build_faster_rcnn
-from defect_detection.transforms import get_train_transforms, get_val_transforms
+from defect_detection.data import COCODefectDataset, get_train_transforms, get_val_transforms
+from defect_detection.models import build_faster_rcnn
+from defect_detection.training.evaluate import evaluate_detector, evaluate_loss
+from defect_detection.training.plot_metrics import plot_loss_curves
 from defect_detection.utils import collate_fn, ensure_dir, get_device, load_yaml, move_targets_to_device, save_jsonl, set_seed
 
 
@@ -123,6 +123,7 @@ def main(config_path: str) -> None:
     best_map50 = -1.0
     epochs = int(config["train"]["epochs"])
     metrics_path = output_dir / "metrics.jsonl"
+    loss_plot_path = output_dir / "loss_curve.png"
     if metrics_path.exists():
         metrics_path.unlink()
 
@@ -142,6 +143,12 @@ def main(config_path: str) -> None:
         )
         scheduler.step()
 
+        val_loss = evaluate_loss(
+            model,
+            val_loader,
+            device=device,
+            amp=bool(config["train"].get("amp", True)),
+        )
         metrics = evaluate_detector(
             model,
             val_loader,
@@ -153,10 +160,12 @@ def main(config_path: str) -> None:
         metrics.update({
             "epoch": epoch,
             "train_loss": train_loss,
+            "val_loss": val_loss,
             "lr": optimizer.param_groups[0]["lr"],
             "seconds": round(time.time() - start, 2),
         })
         save_jsonl(metrics_path, metrics)
+        plot_loss_curves(metrics_path, loss_plot_path)
 
         print(json.dumps(metrics, indent=2))
 
@@ -168,6 +177,7 @@ def main(config_path: str) -> None:
 
     print(f"Done. Best mAP@0.5: {best_map50:.4f}")
     print(f"Artifacts: {output_dir}")
+    print(f"Loss plot: {loss_plot_path}")
 
 
 if __name__ == "__main__":

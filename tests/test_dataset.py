@@ -4,8 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from defect_detection.dataset import COCODefectDataset
-from defect_detection.transforms import get_train_transforms
+from defect_detection.data import COCODefectDataset, get_train_transforms
 
 
 def test_synthetic_dataset_loads(tmp_path: Path):
@@ -13,7 +12,8 @@ def test_synthetic_dataset_loads(tmp_path: Path):
     subprocess.run(
         [
             sys.executable,
-            "scripts/make_synthetic_dataset.py",
+            "-m",
+            "defect_detection.data.make_synthetic_dataset",
             "--output",
             str(data_dir),
             "--train-size",

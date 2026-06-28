@@ -8,8 +8,8 @@ import torch
 from PIL import Image
 from torchvision.transforms import functional as F
 
-from defect_detection.model import load_checkpoint
-from defect_detection.predict import draw_predictions
+from defect_detection.inference.predict import draw_predictions
+from defect_detection.models import load_checkpoint
 from defect_detection.utils import get_device
 
 
