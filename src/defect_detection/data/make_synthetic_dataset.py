@@ -142,6 +142,7 @@ def main() -> None:
     parser.add_argument("--output", type=str, default="data/synthetic")
     parser.add_argument("--train-size", type=int, default=120)
     parser.add_argument("--val-size", type=int, default=30)
+    parser.add_argument("--test-size", type=int, default=30)
     parser.add_argument("--image-size", type=int, default=512)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -151,10 +152,11 @@ def main() -> None:
     output.mkdir(parents=True, exist_ok=True)
 
     next_ann = make_split(output, "train", args.train_size, args.image_size, start_ann_id=1)
-    make_split(output, "val", args.val_size, args.image_size, start_ann_id=next_ann)
+    next_ann = make_split(output, "val", args.val_size, args.image_size, start_ann_id=next_ann)
+    make_split(output, "test", args.test_size, args.image_size, start_ann_id=next_ann)
 
     print(f"Synthetic dataset created at: {output}")
-    print(f"Train images: {args.train_size} | Val images: {args.val_size}")
+    print(f"Train images: {args.train_size} | Val images: {args.val_size} | Test images: {args.test_size}")
 
 
 if __name__ == "__main__":

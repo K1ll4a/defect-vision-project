@@ -12,7 +12,7 @@ from tqdm import tqdm
 from defect_detection.data import COCODefectDataset, get_train_transforms, get_val_transforms
 from defect_detection.models import build_faster_rcnn
 from defect_detection.training.evaluate import evaluate_detector, evaluate_loss
-from defect_detection.training.plot_metrics import plot_loss_curves
+from defect_detection.training.plot_metrics import plot_loss_artifacts
 from defect_detection.utils import collate_fn, ensure_dir, get_device, load_yaml, move_targets_to_device, save_jsonl, set_seed
 
 
@@ -81,6 +81,18 @@ def main(config_path: str) -> None:
         annotations_path=config["data"]["val_annotations"],
         transforms=get_val_transforms(),
     )
+    test_images = config["data"].get("test_images")
+    test_annotations = config["data"].get("test_annotations")
+    if test_images and test_annotations and Path(test_images).exists() and Path(test_annotations).exists():
+        test_ds = COCODefectDataset(
+            images_dir=test_images,
+            annotations_path=test_annotations,
+            transforms=get_val_transforms(),
+        )
+        test_split_name = "test"
+    else:
+        test_ds = val_ds
+        test_split_name = "val"
 
     class_names = config.get("class_names") or train_ds.class_names
     num_classes = int(config.get("num_classes", len(class_names)))
@@ -89,6 +101,13 @@ def main(config_path: str) -> None:
         train_ds,
         batch_size=int(config["train"]["batch_size"]),
         shuffle=True,
+        num_workers=int(config["data"].get("num_workers", 2)),
+        collate_fn=collate_fn,
+    )
+    test_loader = DataLoader(
+        test_ds,
+        batch_size=1,
+        shuffle=False,
         num_workers=int(config["data"].get("num_workers", 2)),
         collate_fn=collate_fn,
     )
@@ -123,13 +142,12 @@ def main(config_path: str) -> None:
     best_map50 = -1.0
     epochs = int(config["train"]["epochs"])
     metrics_path = output_dir / "metrics.jsonl"
-    loss_plot_path = output_dir / "loss_curve.png"
     if metrics_path.exists():
         metrics_path.unlink()
 
     print(f"Device: {device}")
     print(f"Classes: {class_names}")
-    print(f"Train images: {len(train_ds)} | Val images: {len(val_ds)}")
+    print(f"Train images: {len(train_ds)} | Val images: {len(val_ds)} | Test images: {len(test_ds)} ({test_split_name})")
 
     for epoch in range(1, epochs + 1):
         start = time.time()
@@ -143,9 +161,9 @@ def main(config_path: str) -> None:
         )
         scheduler.step()
 
-        val_loss = evaluate_loss(
+        test_loss = evaluate_loss(
             model,
-            val_loader,
+            test_loader,
             device=device,
             amp=bool(config["train"].get("amp", True)),
         )
@@ -160,12 +178,13 @@ def main(config_path: str) -> None:
         metrics.update({
             "epoch": epoch,
             "train_loss": train_loss,
-            "val_loss": val_loss,
+            "test_loss": test_loss,
+            "test_split": test_split_name,
             "lr": optimizer.param_groups[0]["lr"],
             "seconds": round(time.time() - start, 2),
         })
         save_jsonl(metrics_path, metrics)
-        plot_loss_curves(metrics_path, loss_plot_path)
+        plot_loss_artifacts(metrics_path, output_dir)
 
         print(json.dumps(metrics, indent=2))
 
@@ -177,7 +196,7 @@ def main(config_path: str) -> None:
 
     print(f"Done. Best mAP@0.5: {best_map50:.4f}")
     print(f"Artifacts: {output_dir}")
-    print(f"Loss plot: {loss_plot_path}")
+    print(f"Loss plots: {output_dir / 'train_loss_curve.png'} | {output_dir / 'test_loss_curve.png'}")
 
 
 if __name__ == "__main__":

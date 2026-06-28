@@ -20,11 +20,14 @@ def test_synthetic_dataset_loads(tmp_path: Path):
             "3",
             "--val-size",
             "1",
+            "--test-size",
+            "1",
             "--image-size",
             "128",
         ],
         check=True,
     )
+    assert (data_dir / "test" / "annotations.json").exists()
 
     ds = COCODefectDataset(
         images_dir=data_dir / "train" / "images",

@@ -26,7 +26,7 @@ def evaluate_loss(
 
     try:
         with torch.no_grad():
-            for images, targets in tqdm(data_loader, desc="val_loss", leave=False):
+            for images, targets in tqdm(data_loader, desc="test_loss", leave=False):
                 images = [img.to(device) for img in images]
                 targets = move_targets_to_device(targets, device)
                 with torch.amp.autocast(device_type="cuda", enabled=use_amp):

@@ -104,7 +104,8 @@ Generate a synthetic defect detection dataset:
 python -m defect_detection.data.make_synthetic_dataset \
   --output data/synthetic \
   --train-size 120 \
-  --val-size 30
+  --val-size 30 \
+  --test-size 30
 ```
 
 Generated dataset structure:
@@ -114,7 +115,10 @@ data/synthetic/
 ├── train/
 │   ├── images/
 │   └── annotations.json
-└── val/
+├── val/
+│   ├── images/
+│   └── annotations.json
+└── test/
     ├── images/
     └── annotations.json
 ```
@@ -134,17 +138,19 @@ runs/defect_faster_rcnn/
 ├── best.pt
 ├── last.pt
 ├── metrics.jsonl
-└── loss_curve.png
+├── loss_curve.png
+├── train_loss_curve.png
+└── test_loss_curve.png
 ```
 
-Each epoch writes `train_loss`, `val_loss`, detection metrics, learning rate, and epoch time to `metrics.jsonl`.
-The project currently uses the validation split as the holdout/test-like split, so test-loss tracking is stored as `val_loss`.
-The loss curve is updated automatically during training. You can also rebuild it manually:
+Each epoch writes `train_loss`, `test_loss`, detection metrics, learning rate, and epoch time to `metrics.jsonl`.
+If `data.test_images` and `data.test_annotations` exist, `test_loss` is computed on the test split; otherwise the validation split is used as a fallback holdout split.
+The train/test loss plots are updated automatically during training. You can also rebuild them manually:
 
 ```bash
 python -m defect_detection.training.plot_metrics \
   --metrics runs/defect_faster_rcnn/metrics.jsonl \
-  --output assets/loss_curve.png
+  --output-dir assets
 ```
 
 ## Inference
@@ -243,6 +249,8 @@ data:
   train_annotations: data/synthetic/train/annotations.json
   val_images: data/synthetic/val/images
   val_annotations: data/synthetic/val/annotations.json
+  test_images: data/synthetic/test/images
+  test_annotations: data/synthetic/test/annotations.json
 ```
 
 `num_classes` includes the background class.
@@ -266,11 +274,16 @@ Final validation counts for `last.pt`:
 
 Loss tracking:
 
-* new training runs save both `train_loss` and `val_loss` to `runs/defect_faster_rcnn/metrics.jsonl`;
-* `runs/defect_faster_rcnn/loss_curve.png` is generated automatically after every epoch;
-* the historical run shown below was trained before `val_loss` logging was added, so its stored `metrics.jsonl` contains only `train_loss`.
+* new training runs save both `train_loss` and `test_loss` to `runs/defect_faster_rcnn/metrics.jsonl`;
+* `runs/defect_faster_rcnn/train_loss_curve.png` and `runs/defect_faster_rcnn/test_loss_curve.png` are generated automatically after every epoch;
+* `runs/defect_faster_rcnn/loss_curve.png` contains both curves on one comparison plot;
+* the historical run shown below was trained before `test_loss` logging was added, so its stored `metrics.jsonl` contains only `train_loss`.
 
-![Training loss curve](assets/loss_curve.png)
+![Train loss curve](assets/train_loss_curve.png)
+
+![Test loss curve](assets/test_loss_curve.png)
+
+![Combined loss curve](assets/loss_curve.png)
 
 Prediction examples generated with `best.pt` and score threshold `0.4`:
 
@@ -284,7 +297,11 @@ Result artifacts:
 assets/prediction_1.png
 assets/prediction_2.png
 assets/loss_curve.png
+assets/train_loss_curve.png
+assets/test_loss_curve.png
 runs/defect_faster_rcnn/loss_curve.png
+runs/defect_faster_rcnn/train_loss_curve.png
+runs/defect_faster_rcnn/test_loss_curve.png
 runs/defect_faster_rcnn/best.pt
 runs/defect_faster_rcnn/last.pt
 runs/defect_faster_rcnn/metrics.jsonl
@@ -333,6 +350,8 @@ data:
   train_annotations: data/my_dataset/train/annotations.json
   val_images: data/my_dataset/val/images
   val_annotations: data/my_dataset/val/annotations.json
+  test_images: data/my_dataset/test/images
+  test_annotations: data/my_dataset/test/annotations.json
 ```
 
 ## Model Export

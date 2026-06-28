@@ -14,6 +14,8 @@ data:
   train_annotations: data/synthetic/train/annotations.json
   val_images: data/synthetic/val/images
   val_annotations: data/synthetic/val/annotations.json
+  test_images: data/synthetic/test/images
+  test_annotations: data/synthetic/test/annotations.json
   num_workers: 2
 
 model:
