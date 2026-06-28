@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from defect_detection.model import load_checkpoint
+from defect_detection.models import load_checkpoint
 from defect_detection.utils import ensure_dir, get_device
 
 
