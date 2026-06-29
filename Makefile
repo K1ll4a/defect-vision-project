@@ -11,7 +11,7 @@ train:
 	python3 -m defect_detection.training.engine --config configs/faster_rcnn.yaml
 
 plot-loss:
-	python3 -m defect_detection.training.plot_metrics --metrics runs/defect_faster_rcnn/metrics.jsonl --output-dir assets
+	python3 -m defect_detection.training.plot_metrics --metrics runs/defect_faster_rcnn/metrics.jsonl --output assets/loss_curve.png
 
 predict:
 	python3 -m defect_detection.inference.predict --weights runs/defect_faster_rcnn/best.pt --image data/synthetic/val/images/val_0000.png --output outputs/prediction.png

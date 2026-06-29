@@ -12,7 +12,7 @@ from tqdm import tqdm
 from defect_detection.data import COCODefectDataset, get_train_transforms, get_val_transforms
 from defect_detection.models import build_faster_rcnn
 from defect_detection.training.evaluate import evaluate_detector, evaluate_loss
-from defect_detection.training.plot_metrics import plot_loss_artifacts
+from defect_detection.training.plot_metrics import plot_loss_curves
 from defect_detection.utils import collate_fn, ensure_dir, get_device, load_yaml, move_targets_to_device, save_jsonl, set_seed
 
 
@@ -184,7 +184,7 @@ def main(config_path: str) -> None:
             "seconds": round(time.time() - start, 2),
         })
         save_jsonl(metrics_path, metrics)
-        plot_loss_artifacts(metrics_path, output_dir)
+        plot_loss_curves(metrics_path, output_dir / "loss_curve.png")
 
         print(json.dumps(metrics, indent=2))
 
@@ -196,7 +196,7 @@ def main(config_path: str) -> None:
 
     print(f"Done. Best mAP@0.5: {best_map50:.4f}")
     print(f"Artifacts: {output_dir}")
-    print(f"Loss plots: {output_dir / 'train_loss_curve.png'} | {output_dir / 'test_loss_curve.png'}")
+    print(f"Loss plot: {output_dir / 'loss_curve.png'}")
 
 
 if __name__ == "__main__":

@@ -138,19 +138,17 @@ runs/defect_faster_rcnn/
 ├── best.pt
 ├── last.pt
 ├── metrics.jsonl
-├── loss_curve.png
-├── train_loss_curve.png
-└── test_loss_curve.png
+└── loss_curve.png
 ```
 
 Each epoch writes `train_loss`, `test_loss`, detection metrics, learning rate, and epoch time to `metrics.jsonl`.
 If `data.test_images` and `data.test_annotations` exist, `test_loss` is computed on the test split; otherwise the validation split is used as a fallback holdout split.
-The train/test loss plots are updated automatically during training. You can also rebuild them manually:
+The loss comparison plot is updated automatically during training. It contains both `Train loss` and `Test loss` on the same graph. You can also rebuild it manually:
 
 ```bash
 python -m defect_detection.training.plot_metrics \
   --metrics runs/defect_faster_rcnn/metrics.jsonl \
-  --output-dir assets
+  --output assets/loss_curve.png
 ```
 
 ## Inference
@@ -275,15 +273,10 @@ Final validation counts for `last.pt`:
 Loss tracking:
 
 * new training runs save both `train_loss` and `test_loss` to `runs/defect_faster_rcnn/metrics.jsonl`;
-* `runs/defect_faster_rcnn/train_loss_curve.png` and `runs/defect_faster_rcnn/test_loss_curve.png` are generated automatically after every epoch;
 * `runs/defect_faster_rcnn/loss_curve.png` contains both curves on one comparison plot;
 * the historical run shown below was trained before `test_loss` logging was added, so its stored `metrics.jsonl` contains only `train_loss`.
 
-![Train loss curve](assets/train_loss_curve.png)
-
-![Test loss curve](assets/test_loss_curve.png)
-
-![Combined loss curve](assets/loss_curve.png)
+![Train and test loss comparison](assets/loss_curve.png)
 
 Prediction examples generated with `best.pt` and score threshold `0.4`:
 
@@ -297,11 +290,7 @@ Result artifacts:
 assets/prediction_1.png
 assets/prediction_2.png
 assets/loss_curve.png
-assets/train_loss_curve.png
-assets/test_loss_curve.png
 runs/defect_faster_rcnn/loss_curve.png
-runs/defect_faster_rcnn/train_loss_curve.png
-runs/defect_faster_rcnn/test_loss_curve.png
 runs/defect_faster_rcnn/best.pt
 runs/defect_faster_rcnn/last.pt
 runs/defect_faster_rcnn/metrics.jsonl
