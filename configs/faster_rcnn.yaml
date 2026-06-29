@@ -24,7 +24,7 @@ model:
   trainable_backbone_layers: 3
 
 train:
-  epochs: 5
+  epochs: 12
   batch_size: 2
   lr: 0.005
   momentum: 0.9

@@ -238,7 +238,7 @@ model:
   pretrained: true
 
 train:
-  epochs: 5
+  epochs: 12
   batch_size: 2
   lr: 0.005
 
@@ -256,7 +256,8 @@ For three defect classes, the value is `4`.
 
 ## Results
 
-The model was trained for 5 epochs on the generated synthetic dataset and evaluated on the synthetic validation split.
+The historical run below was trained for 5 epochs on the generated synthetic dataset and evaluated on the synthetic validation split.
+The default training config now uses 12 epochs to make train/test loss divergence easier to inspect.
 The validation set contains 30 images. Metrics are reported at IoU `0.5`; evaluation uses the configured score threshold `0.35`.
 
 | Model                     | Checkpoint | Epoch | Dataset               | mAP@0.5 | Precision | Recall |
